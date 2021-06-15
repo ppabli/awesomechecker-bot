@@ -1,25 +1,36 @@
 import requests
 import json
 import config
-import logging
-from Tracker import Tracker
+import time
+import math
+import numpy as np
+import time
+import threading
 
+from Tracker import Tracker
+from ThreadTask import ThreadTask
+from Utils import infoLogger, debugLogger, warningLogger
 class App:
 
 	def __init__(self):
 
-		logging.basicConfig(level = logging.INFO, filename = 'logs/log', format = '%(asctime)s %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 		self.__API_URL = config.API_PROTOCOL + config.API_HOST + config.API_PREFIX + config.API_VERSION
 		self.__data = {}
 		self.__trackers = []
+		self.__iteration = 0
 
 	def run(self):
 
 		while True:
 
+			infoLogger.info("New iteration")
+
 			self.loadData()
 			self.startTracking()
-			break
+
+			time.sleep(30 * 60)
+
+			self.__iteration += 1
 
 	def loadData(self):
 
@@ -45,10 +56,8 @@ class App:
 				'productPages': productPagesData
 			}
 
-		self.__data = data
 
-		with open('data.json', 'w') as outfile:
-			json.dump(data, outfile, sort_keys=True, indent=4, separators=(',', ': '))
+		self.__data = data
 
 	def startTracking(self):
 
@@ -60,5 +69,17 @@ class App:
 
 				self.__trackers.append(newTracker)
 
-				newTracker.trackPrice()
+		tasksNumber = math.ceil(len(self.__trackers) / config.PAGES_TASK)
+
+		infoLogger.info(f"Iteration {self.__iteration} - launched threads: {tasksNumber}")
+
+		array = np.array(self.__trackers)
+		tempArrays = np.array_split(array, tasksNumber)
+
+		for idx, tempArray in enumerate(tempArrays):
+
+			task = ThreadTask(tempArray)
+			threading.Thread(target = task.startTask()).start()
+
+			infoLogger.info(f"Iteration {self.__iteration} - thread: {idx} launched")
 
