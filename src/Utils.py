@@ -13,7 +13,7 @@ def setupLogger(name, file: str, level=logging.INFO):
 
 	return logger
 
-
-debugLogger = setupLogger('debug', './logs/debug.log', logging.DEBUG)
-infoLogger = setupLogger('info', './logs/info.log', logging.INFO)
-warningLogger = setupLogger('warning', './logs/warning.log', logging.WARNING)
+debugLogger = setupLogger('debug', './logs/debugs.log', logging.DEBUG)
+infoLogger = setupLogger('info', './logs/infos.log', logging.INFO)
+warningLogger = setupLogger('warning', './logs/warnings.log', logging.WARNING)
+errorLogger = setupLogger('error', './logs/errors.log', logging.ERROR)

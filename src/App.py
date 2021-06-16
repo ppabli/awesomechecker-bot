@@ -1,21 +1,32 @@
-import requests
 import json
-import config
-import time
 import math
-import numpy as np
-import time
+import sys
 import threading
+import time
 
-from Tracker import Tracker
+import numpy as np
+import requests
+
+import config
 from ThreadTask import ThreadTask
-from Utils import infoLogger, debugLogger, warningLogger
+from Tracker import Tracker
+from Utils import debugLogger, infoLogger, warningLogger, errorLogger
+
+sys.path.insert(0, './models/')
+
+from page import Page
+from product import Product
+from productPage import ProductPage
+from review import Review
+from reviewAttribute import ReviewAttribute
+
+
 class App:
 
 	def __init__(self):
 
 		self.__API_URL = config.API_PROTOCOL + config.API_HOST + config.API_PREFIX + config.API_VERSION
-		self.__data = {}
+		self.__data = []
 		self.__trackers = []
 		self.__iteration = 0
 
@@ -34,38 +45,63 @@ class App:
 
 	def loadData(self):
 
-		data = {}
-
 		tmpProducts = json.loads(requests.get(self.__API_URL + 'products').text)
 		tmpProductPages = json.loads(requests.get(self.__API_URL + 'productPages').text)
 		tmpReviewAttributes = json.loads(requests.get(self.__API_URL + 'reviewAttributes').text)
 
 		for product in tmpProducts:
 
-			productPages = list(filter(lambda productPage: productPage['product']['id'] ==  product['id'], tmpProductPages))
-			productPagesData = list(map((lambda productPage: {'id': productPage['id'], 'pageId': productPage['page']['id'], 'reviewTag': productPage['page']['reviewTag'], 'reviewInside': productPage['page']['reviewInside'], 'reviewInsideTag': productPage['page']['reviewInsideTag'], 'url': productPage['url']}), productPages))
+			newProduct = Product()
+			newProduct.id = product['id']
+			newProduct.name = product['name']
 
-			for index, productPage in enumerate(productPages):
+			productPages = list(filter(lambda productPage: productPage['product']['id'] ==  product['id'], tmpProductPages))
+			productPagesData = []
+
+			for productPage in productPages:
+
+				newPage = Page()
+				newProductPage = ProductPage()
+
+				newPage.id = productPage['page']['id']
+				newPage.name = productPage['page']['name']
+				newPage.reviewTag = productPage['page']['reviewTag']
+				newPage.reviewInside = productPage['page']['reviewInside']
+				newPage.reviewInsideTag = productPage['page']['reviewInsideTag']
+
+				newProductPage.id = productPage['id']
+				newProductPage.url = productPage['url']
+				newProductPage.product = product
+
+				reviewAttributesData = []
 
 				reviewAttributes = list(filter(lambda reviewAttribute: reviewAttribute['page']['id'] == productPage['page']['id'], tmpReviewAttributes))
-				reviewAttributesData = list(map((lambda reviewAttribute: {'id': reviewAttribute['id'], 'pageId': reviewAttribute['page']['id'], 'key': reviewAttribute['key'], 'value': reviewAttribute['value']}), reviewAttributes))
-				productPagesData[index]['reviewAttributes'] = reviewAttributesData;
 
-			data[product['id']] = {
-				'name': product['name'],
-				'productPages': productPagesData
-			}
+				for reviewAttribute in reviewAttributes:
 
+					newReviewAttribute = ReviewAttribute()
+					newReviewAttribute.id = reviewAttribute['id']
+					newReviewAttribute.key = reviewAttribute['key']
+					newReviewAttribute.value = reviewAttribute['value']
 
-		self.__data = data
+					reviewAttributesData.append(newReviewAttribute)
+
+				newPage.reviewAttributes = reviewAttributesData
+				newProductPage.page = newPage
+
+				productPagesData.append(newProductPage)
+
+			newProduct.productPages = productPagesData
+
+			self.__data.append(newProduct)
 
 	def startTracking(self):
 
-		for index in self.__data:
+		for product in self.__data:
 
-			for page in self.__data[index]['productPages']:
+			for productPage in product.productPages:
 
-				newTracker = Tracker(self.__data[index], page, page['reviewAttributes'])
+				newTracker = Tracker(product, productPage.page, productPage, productPage.page.reviewAttributes)
 
 				self.__trackers.append(newTracker)
 
