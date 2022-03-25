@@ -23,49 +23,56 @@ class Tracker:
 
 	def trackPrice(self):
 
-		infoLogger.info(f"Tracking: {self.__product.name} - {self.__productPage.url}")
+		try:
 
-		page = requests.get(self.__productPage.url, headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"})
-		soup1 = beautifulSoup(page.content, "html.parser")
-		soup2 = beautifulSoup(soup1.prettify(), "html.parser")
+			infoLogger.info(f"Tracking: {self.__product.name} - {self.__productPage.url}")
 
-		pageAttributes = {}
+			page = requests.get(self.__productPage.url, headers = config.HEADERS)
+			soup1 = beautifulSoup(page.content, "html.parser")
+			soup2 = beautifulSoup(soup1.prettify(), "html.parser")
 
-		for reviewAttribute in self.__reviewAttributes:
+			pageAttributes = {}
 
-			pageAttributes[reviewAttribute.key] = reviewAttribute.value
+			for reviewAttribute in self.__reviewAttributes:
 
-		element = soup2.find(self.__page.reviewTag, attrs = pageAttributes)
+				pageAttributes[reviewAttribute.key] = reviewAttribute.value
 
-		if (element):
+			element = soup2.find(self.__page.reviewTag, pageAttributes)
 
-			if self.__page.reviewInside == False:
+			if (element):
 
-				text = element.getText()
+				if self.__page.reviewInside == False:
+
+					text = element.getText()
+
+				else:
+
+					text = element[self.__page.reviewInsideTag]
+
+				re.sub('\D', '', text)
+				text2 = text.strip().replace(",", ".")
+				price = text2.replace('.', '', text2.count('.') - 1)
+
+				review = {
+					'value': price,
+					'currency': 'eur',
+					'productPage': self.__page.id
+				}
+
+				try:
+
+					x = requests.post(Tracker.POST_URL, json = review)
+
+					infoLogger.info(f"Track done - {self.__product.name} - {self.__productPage.url}")
+
+				except e:
+
+					errorLogger.error(f"Error posting - {self.__product.name} - {self.__productPage.url}")
 
 			else:
 
-				text = element[self.__page.reviewInsideTag]
+				warningLogger.warning(f"No element detected - {self.__product.name} - {self.__productPage.url}")
 
-			text2 = text.strip().replace(",", ".")
-			price = float(re.sub("$|€", '', text2))
+		except e:
 
-			review = {
-				'value': price,
-				'currency': 'eur',
-				'productPage': self.__page.id
-			}
-
-			try:
-
-				x = requests.post(Tracker.POST_URL, json = review)
-
-				infoLogger.info(f"Track done - {self.__product.name} - {self.__productPage.url}")
-
-			except:
-
-				errorLogger.error(f"Error - {self.__product.name} - {self.__productPage.url}")
-
-		else:
-
-			warningLogger.warning(f"No element detected - {self.__product.name} - {self.__productPage.url}")
+			errorLogger.error(f"Error scrapping - {self.__product.name} - {self.__productPage.url}")
