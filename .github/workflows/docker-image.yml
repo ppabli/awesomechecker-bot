@@ -31,4 +31,4 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/awesomechecker-bot:$(date +%s)
+        tags: ${{ secrets.DOCKER_USERNAME }}/awesomechecker-bot:latest
