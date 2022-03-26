@@ -39,11 +39,13 @@ class App:
 			self.loadData()
 			self.startTracking()
 
-			time.sleep(30 * 60)
+			time.sleep(60 * config.ITERATION_TIME)
 
 			self.__iteration += 1
 
 	def loadData(self):
+
+		self.__data = []
 
 		tmpProducts = json.loads(requests.get(self.__API_URL + 'products').text)
 		tmpProductPages = json.loads(requests.get(self.__API_URL + 'productPages').text)
@@ -97,6 +99,8 @@ class App:
 
 	def startTracking(self):
 
+		self.__trackers = []
+
 		for product in self.__data:
 
 			for productPage in product.productPages:
@@ -116,6 +120,4 @@ class App:
 
 			task = ThreadTask(tempArray)
 			threading.Thread(target = task.startTask()).start()
-
-			infoLogger.info(f"Iteration {self.__iteration} - thread: {idx} launched")
 
