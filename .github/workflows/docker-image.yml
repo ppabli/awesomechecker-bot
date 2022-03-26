@@ -19,8 +19,8 @@ jobs:
     - name: Login to Docker Hub
       uses: docker/login-action@v1
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
  
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
@@ -31,4 +31,4 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/awesomechecker-bot:$(date +%s)
+        tags: ${{ secrets.DOCKER_USERNAME }}/awesomechecker-bot:$(date +%s)
