@@ -25,7 +25,7 @@ class App:
 
 	def __init__(self):
 
-		self.__API_URL = config.API_PROTOCOL + config.API_HOST + config.API_PREFIX + config.API_VERSION
+		self.__API_URL = f'{config.API_PROTOCOL}://{config.API_HOST}:{config.API_PORT}/{config.API_PREFIX}/{config.API_VERSION}/'
 		self.__data = []
 		self.__trackers = []
 		self.__iteration = 0

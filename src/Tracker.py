@@ -1,10 +1,9 @@
 import re
-import smtplib
-import ssl
-import time
+from decimal import Decimal
 
 import requests
-from bs4 import BeautifulSoup as beautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 import config
 from Utils import debugLogger, infoLogger, warningLogger, errorLogger
@@ -12,7 +11,7 @@ from Utils import debugLogger, infoLogger, warningLogger, errorLogger
 
 class Tracker:
 
-	POST_URL = config.API_PROTOCOL + config.API_HOST + config.API_PREFIX + config.API_VERSION + 'reviews'
+	POST_URL = f'{config.API_PROTOCOL}://{config.API_HOST}:{config.API_PORT}/{config.API_PREFIX}/{config.API_VERSION}/reviews'
 
 	def __init__ (self, product, page, productPage, reviewAttributes):
 
@@ -25,33 +24,39 @@ class Tracker:
 
 		try:
 
+			driver = webdriver.Remote(command_executor=f'http://{config.GRID_HOST}:{config.GRID_PORT}/wd/hub', desired_capabilities=DesiredCapabilities.CHROME)
+
 			infoLogger.info(f"Tracking: {self.__product.name} - {self.__productPage.url}")
 
-			page = requests.get(self.__productPage.url, headers = config.HEADERS)
-			soup1 = beautifulSoup(page.content, "html.parser")
-			soup2 = beautifulSoup(soup1.prettify(), "html.parser")
+			driver.get(self.__productPage.url)
 
-			pageAttributes = {}
+			requestAttributes = "and".join(map(lambda reviewAttribute: f'@{reviewAttribute.key}="{reviewAttribute.value}"', self.__reviewAttributes))
 
-			for reviewAttribute in self.__reviewAttributes:
+			priceElements = driver.find_elements_by_xpath(f'.//{self.__page.reviewTag}[{requestAttributes}]')
 
-				pageAttributes[reviewAttribute.key] = reviewAttribute.value
+			if len(priceElements) != 0:
 
-			element = soup2.find(self.__page.reviewTag, pageAttributes)
+				priceElement = priceElements[0]
+				priceText = priceElement.get_attribute('innerHTML')
 
-			if (element):
+				priceFormatted = priceText.replace(',', '.')
+				priceFormatted = re.sub('[^\d\.]', '', priceFormatted)
 
-				if self.__page.reviewInside == False:
+				dotsNumber = priceFormatted.split('.')
 
-					text = element.getText()
+				if len(dotsNumber) > 1:
 
-				else:
+					decimalPart = int(dotsNumber[-1])
 
-					text = element[self.__page.reviewInsideTag]
+					intPart = int(''.join(dotsNumber[0:-1]))
 
-				re.sub('\D', '', text)
-				text2 = text.strip().replace(",", ".")
-				price = text2.replace('.', '', text2.count('.') - 1)
+				elif len(dotsNumber) == 1:
+
+					decimalPart = 0
+
+					intPart = int(dotsNumber[0])
+
+				price = intPart + (decimalPart / 100)
 
 				review = {
 					'value': price,
@@ -71,7 +76,9 @@ class Tracker:
 
 			else:
 
-				warningLogger.warning(f"No element detected - {self.__product.name} - {self.__productPage.url}")
+				warningLogger.warning(f"No price found - {self.__product.name} - {self.__productPage.url}")
+
+			driver.quit()
 
 		except e:
 
